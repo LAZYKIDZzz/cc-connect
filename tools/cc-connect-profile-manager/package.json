@@ -1,0 +1,16 @@
+{
+  "name": "cc-connect-profile-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone profile manager for cc-connect configs and local instances.",
+  "bin": {
+    "ccpm": "./ccpm.js"
+  },
+  "scripts": {
+    "start": "node ccpm.js serve",
+    "check": "node --check ccpm.js && node smoke-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
