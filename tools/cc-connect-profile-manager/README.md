@@ -1,191 +1,118 @@
-# cc-connect Profile Manager
+# cc-connect Profile Manager (ccpm)
 
-这是一个 **非侵入式** 的 cc-connect 辅助工具，用来快速创建、切换和启动多套隔离的 `config.toml`。
+> 个人化的 cc-connect 多 profile 工具：暗色 Web UI + CLI，
+> 每个 profile = 一个项目 + 一个 AI Provider + 一个移动端入口，
+> 互不干扰地共存、按需启停。
 
-它不会修改 cc-connect 原项目代码，也不会替代 cc-connect 内置 Web UI。它只是生成标准 cc-connect 配置文件，并通过：
+它**不会修改 cc-connect 源代码**，也**不替代 cc-connect 内置 Web UI**。
+它只是生成标准的 `config.toml` 并以 `cc-connect --config <profile>/config.toml` 启动对应实例。
 
-```powershell
-cc-connect --config <profile>\config.toml
-```
+## 它解决什么
 
-启动对应实例。
+- 不想再为不同项目反复编辑同一份 `config.toml`
+- 想给 Codex / Claude Code / Gemini / Cursor 等不同 Agent 各开一个 profile
+- 想让 Telegram bot token、飞书 App Secret、Slack token 这种凭据**只录一次**，新建 profile 时挑选即可
+- 想给每个实例独立的 `data_dir` / management 端口 / bridge 端口 / 日志目录
+- 想直接复用 cc-connect 自带的 `provider-presets.json`（MiniMax / AIHubMix / DMXAPI 等 30+ 推荐供应商）
 
-## 适合场景
+## 安装与启动
 
-- 你经常为不同项目手动修改 `config.toml`
-- 你希望项目目录、AI Provider、移动端平台凭据相互隔离
-- 你希望移动端平台凭据一次维护、多次复用
-- 你希望日志、语言、端口、Provider env 等默认参数不要干扰日常创建流程
-- 你希望必要时同时启动多个 cc-connect 实例
-
-## 快速启动
-
-```powershell
-cd tools\cc-connect-profile-manager
+```bash
+cd tools/cc-connect-profile-manager
 node ccpm.js serve
 ```
 
-默认访问：
+默认监听 `http://127.0.0.1:9876` 并自动打开浏览器。
 
-```text
-http://127.0.0.1:9876
+```bash
+node ccpm.js serve --port 9900 --no-browser    # 自定义端口、不弹浏览器
+node ccpm.js serve --home /data/ccpm           # 数据目录
+node ccpm.js serve --cc-connect-root /opt/cc   # cc-connect 仓库位置（用于读取 provider-presets.json）
 ```
 
-指定本工具自己的数据目录：
-
-```powershell
-node ccpm.js serve --home D:\ccpm
-```
-
-默认数据目录：
-
-```text
-%USERPROFILE%\.cc-connect-profile-manager
-```
+默认数据目录：`~/.cc-connect-profile-manager/`
+默认 cc-connect repo 探测顺序：`--cc-connect-root` → `CC_CONNECT_ROOT` → 自动向上查找。
 
 ## Web UI 工作流
 
-主界面按高频使用路径设计成三步：
+主界面是一个深色 Dashboard：
 
-1. **项目**
-   - 填写 Profile 名称
-   - 填写 cc-connect 项目名
-   - 通过目录浏览器选择项目路径
+- **左侧 sidebar** — 所有 profile，带状态点（运行中会脉冲）、`agent · platform` 徽章、工作目录预览，⌘ K 聚焦搜索
+- **顶部状态卡** — 大号 Running/Stopped pill、PID、Management URL / Bridge URL（一键复制），Start / Restart / Stop / Save / Remove 一组操作
+- **Project 卡** — 项目名 + 工作目录（带目录选择 modal）
+- **AI Provider 卡** — 三类预设统一选择：
+  - cc-connect 自带的 curated presets（按当前 Agent 自动过滤）
+  - 本机检测（`~/.codex/config.toml`、`~/.claude.json`、`OPENAI_API_KEY` 等）
+  - 你自定义的 Provider 预设
+- **Mobile platform 卡** — 选择平台后**自动渲染该平台的专属字段**（不再让你自己写 JSON），高级字段折叠
+- **Advanced 卡** — 语言、日志级别、管理端口、Provider env JSON、Management token
+- **底部 tab** — `config.toml` 文本预览 + **实时日志流（SSE）**，运行中可暂停/恢复
+- **Preset Library 抽屉** — 维护 Provider 预设和平台预设；平台预设按 type 渲染对应字段
 
-2. **AI Provider**
-   - 选择 Agent：`codex`、`claudecode`、`gemini` 等
-   - 可从本机配置或环境变量中检测 Provider
-   - 也可以从预设库一键套用 API Key、Base URL、Model
+### 平台支持
 
-3. **移动端平台**
-   - 选择 Telegram、Feishu、Slack、Discord 等平台
-   - 平台 token、app_id、app_secret 等凭据建议先放入预设库
-   - 创建 profile 时只选择对应平台预设
+每个平台都有专属字段定义：
 
-日志级别、语言、Provider env、Platform options JSON 被收纳在 **高级选项** 中。正常新增项目时通常不需要展开。
+| 平台 | 必填字段 | 备注 |
+|---|---|---|
+| Telegram | `token` | 长轮询，无需公网 |
+| Feishu (CN) | `app_id`, `app_secret` | WebSocket，无需公网 |
+| Lark (Intl.) | `app_id`, `app_secret` | 同上 |
+| Slack | `bot_token`, `app_token` | Socket Mode |
+| Discord | `token` | Gateway，无需公网 |
+| DingTalk | `client_id`, `client_secret` | Stream 模式 |
+| WeChat Work | 模式可选 HTTP / WebSocket | 字段动态切换 |
+| QQ (OneBot) | `ws_url` | 需 NapCat / LLOneBot |
+| QQ Bot 官方 | `app_id`, `app_secret` | WebSocket |
+| LINE | `channel_secret`, `channel_token` | 需公网 webhook |
+| Weibo DM | `app_id`, `app_secret` | WebSocket |
+| WeChat 个人 (ilink) | `token` | 需 ilink 网关 token |
+| MAX | `token` | 长轮询，可切 webhook |
+| WPS 协作 | `app_id`, `app_secret` | WebSocket |
 
-## 预设库
+### Agent 支持
 
-点击左侧 **预设库** 可以维护两类信息：
+`claudecode`, `codex`, `cursor`, `gemini`, `iflow`, `opencode`, `qoder`, `kimi`, `devin`, `acp`, `tmux`, `pi`，每个有自己的 mode 枚举（如 codex: `suggest / auto-edit / full-auto / yolo`）。
 
-- **Provider 预设**
-  - 显示名称
-  - Agent 类型
-  - Provider 名称
-  - API Key
-  - Base URL
-  - Model
+## CLI 速查
 
-- **移动端平台预设**
-  - 显示名称
-  - 平台类型
-  - Options JSON
-
-例如 Telegram：
-
-```json
-{
-  "token": "123456:abcdef"
-}
+```bash
+ccpm create --name app --work-dir /path/to/app \
+            --agent codex --mode suggest \
+            --platform telegram --platform-token 123:abc \
+            --api-key sk-xxx --model gpt-5.4
+ccpm list
+ccpm status app
+ccpm start app [--bin /path/to/cc-connect] [--timeout 6000]
+ccpm restart app
+ccpm stop app
+ccpm logs app [--follow] [-n 200]
+ccpm config app
+ccpm remove app
+ccpm serve  [--port 9876] [--no-browser] [--cc-connect-root DIR]
 ```
 
-例如 Feishu：
+`start` 会等 cc-connect 的 management API（默认 ≤6s）可达再返回，超时会自动打印最近 30 行日志，比旧版"立即 detach 看不到反馈"友好得多。
 
-```json
-{
-  "app_id": "cli_xxx",
-  "app_secret": "sec_xxx",
-  "allow_from": "*"
-}
+## 数据布局
+
+```
+<home>/                                # 默认 ~/.cc-connect-profile-manager
+  presets.json                         # 自定义 Provider + 平台预设
+  profiles/
+    <name>/
+      profile.json                     # ccpm 内部元数据
+      config.toml                      # 标准 cc-connect 配置
+      cc-connect.pid                   # 运行中由 ccpm 启动的进程 PID
+      started_at                       # ISO 时间戳
+      data/                            # 该 profile 独立的 cc-connect 数据目录
+      logs/cc-connect.log              # 该实例日志
 ```
 
-预设会保存到：
-
-```text
-<home>\presets.json
-```
-
-## 本机 Provider 检测
-
-工具会尝试读取以下信息作为候选 Provider：
-
-- `%USERPROFILE%\.codex\config.toml`
-- `%USERPROFILE%\.claude.json`
-- 环境变量 `OPENAI_API_KEY`
-- 环境变量 `ANTHROPIC_API_KEY`
-- 环境变量 `GEMINI_API_KEY`
-
-如果你不希望 API Key 出现在本工具生成的 profile 中，可以只保存 Agent/Model/Base URL，在启动 cc-connect 的 shell 环境里继续使用原有环境变量。
-
-## 命令行用法
-
-创建 profile：
-
-```powershell
-node ccpm.js create --name app --work-dir D:\dev\app --agent codex --platform telegram --platform-token "123:abc"
-```
-
-启动 profile：
-
-```powershell
-node ccpm.js start app
-```
-
-如果 `cc-connect` 不在 `PATH` 中，可以显式指定二进制路径：
-
-```powershell
-node ccpm.js start app --bin D:\tools\cc-connect.exe
-```
-
-常用命令：
-
-```powershell
-node ccpm.js list
-node ccpm.js status app
-node ccpm.js logs app
-node ccpm.js config app
-node ccpm.js stop app
-node ccpm.js restart app
-```
-
-## 生成目录
-
-每个 profile 都会生成独立目录：
-
-```text
-<home>\profiles\<name>\
-  profile.json
-  config.toml
-  cc-connect.pid
-  data\
-  logs\cc-connect.log
-```
-
-其中：
-
-- `profile.json` 是本工具自己的元数据
-- `config.toml` 是标准 cc-connect 配置文件
-- `data\` 是该 profile 独立的 cc-connect 数据目录
-- `logs\cc-connect.log` 是该实例日志
-- `cc-connect.pid` 记录由本工具启动的进程 PID
-
-## 生成的 config.toml
-
-每个 profile 都包含独立的：
-
-- `data_dir`
-- `[management]`
-- `[bridge]`
-- `[[providers]]`
-- `[[projects]]`
-- `[projects.agent]`
-- `[projects.agent.options]`
-- `[[projects.platforms]]`
-
-示例：
+## 生成的 config.toml 示例
 
 ```toml
-data_dir = "D:\\ccpm\\profiles\\app\\data"
+data_dir = "/home/me/.cc-connect-profile-manager/profiles/app/data"
 language = "zh"
 
 [log]
@@ -201,12 +128,13 @@ cors_origins = ["*"]
 enabled = true
 port = 11141
 token = "..."
+path = "/bridge/ws"
 cors_origins = ["*"]
 
 [[providers]]
 name = "primary"
 api_key = "sk-xxx"
-model = "gpt-5.3-codex"
+model = "gpt-5.4"
 
 [[projects]]
 name = "app"
@@ -216,8 +144,8 @@ type = "codex"
 provider_refs = ["primary"]
 
 [projects.agent.options]
-work_dir = "D:\\dev\\app"
-mode = "default"
+work_dir = "/path/to/app"
+mode = "suggest"
 provider = "primary"
 
 [[projects.platforms]]
@@ -227,54 +155,43 @@ type = "telegram"
 token = "123:abc"
 ```
 
-## 多实例建议
+## 多实例提示
 
-可以同时启动多个 profile。工具会为每个 profile 自动分配独立的：
+可以并行启动多个 profile —— 端口、token、日志、data_dir 都按 profile 自动隔离。
+但**别让多个运行中的 profile 复用同一个 Telegram bot token / 飞书 App / Slack app**，
+否则会出现消息重复、事件被抢占、webhook 冲突。
 
-- `data_dir`
-- management 端口
-- bridge 端口
-- token
-- 日志目录
+## 代码结构
 
-但要注意：
+```
+tools/cc-connect-profile-manager/
+├── ccpm.js                  # 薄 CLI 入口
+├── package.json
+├── smoke-test.js            # 端到端冒烟测试（CLI + HTTP）
+├── src/
+│   ├── agents.js            # Agent 元数据（type / modes / default_mode）
+│   ├── cli.js               # 子命令调度
+│   ├── config.js            # TOML 渲染
+│   ├── discovery.js         # 本机 Provider 检测 + 目录浏览
+│   ├── platforms.js         # 13 个平台的字段 schema
+│   ├── presets.js           # 读取 cc-connect provider-presets.json
+│   ├── runtime.js           # spawn / wait_for_management / SSE 增量 tail
+│   ├── server.js            # HTTP + SSE 路由
+│   └── store.js             # Profile / Preset CRUD
+└── public/
+    ├── index.html
+    ├── styles.css           # Linear/Vercel 风深色设计系统
+    └── app.js               # 前端 SPA（vanilla ES Module）
+```
 
-- 不建议多个运行中的 profile 复用同一个 Telegram bot token、Feishu app、Slack app 等平台凭据
-- 同一平台凭据被多个实例同时使用时，可能出现消息重复、事件被抢占或 webhook 冲突
-- 如果只是切换项目，通常启动一个 profile 即可
-- 如果确实需要多个项目并行在线，建议为每个实例准备独立移动端入口
-
-## 和 cc-connect 内置 Web UI 的关系
-
-cc-connect 内置 Web UI 更适合管理单个运行中的实例。
-
-本工具更偏向：
-
-- profile 编排
-- 多配置切换
-- 多实例启停
-- 强隔离使用习惯
-
-两者可以并存。本工具生成的 profile 会启用独立 `[management]`，因此实例启动后仍然可以访问该实例自己的 cc-connect Web UI。
+零运行时依赖，纯 Node `>= 18`。
 
 ## 自检
 
-语法检查：
-
-```powershell
-node --check ccpm.js
+```bash
+node --check ccpm.js                       # 语法
+node smoke-test.js                         # CLI + HTTP 烟测
+npm run check                              # 上面两步
 ```
 
-Smoke test：
-
-```powershell
-node smoke-test.js
-```
-
-或：
-
-```powershell
-npm run check
-```
-
-在某些 sandbox 环境里，`npm run check` 可能因为 npm/Node 访问用户目录被拒绝而失败。这种情况下直接运行 `node --check ccpm.js` 和 `node smoke-test.js` 即可。
+如果在 sandbox 环境里 npm 无法写 `~/.npm`，直接 `node smoke-test.js` 即可。

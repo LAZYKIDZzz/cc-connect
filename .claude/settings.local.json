@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(node *)",
+      "Bash(curl -s http://127.0.0.1:9988/api/health)",
+      "Bash(curl -s http://127.0.0.1:9988/api/discovery)",
+      "Bash(curl -s http://127.0.0.1:9988/api/platforms)",
+      "Bash(curl -s http://127.0.0.1:9988/)",
+      "Bash(curl -s http://127.0.0.1:9988/styles.css)",
+      "Bash(curl -s http://127.0.0.1:9988/app.js)",
+      "Bash(curl -s http://127.0.0.1:9988/api/cc-presets)",
+      "Bash(curl -sS http://127.0.0.1:9988/api/profiles)",
+      "Bash(curl *)",
+      "Bash(grep -nE \"'[A-Z][a-zA-Z ]{3,}'\" public/app.js)"
     ]
   }
 }

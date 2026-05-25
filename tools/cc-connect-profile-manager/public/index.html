@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>cc-connect · Profile Manager</title>
+  <script>
+    // Avoid theme flash: apply persisted choice before stylesheet paints.
+    (function () {
+      try {
+        var t = localStorage.getItem('ccpm-theme');
+        if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch (e) { /* localStorage unavailable */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><path d='M9 11h14v2.4H9zM9 16h10v2.4H9zM9 21h6v2.4H9z' fill='white'/></svg>" />
+</head>
+<body>
+  <div id="root">
+    <div class="boot">
+      <div class="boot-mark"></div>
+      <div class="boot-text">加载中…</div>
+    </div>
+  </div>
+
+  <template id="tpl-dir-picker">
+    <div class="modal" data-modal="dir">
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-panel modal-dir">
+        <header class="modal-head">
+          <div>
+            <div class="modal-eyebrow">选择目录</div>
+            <div class="modal-title" data-current>~</div>
+          </div>
+          <button class="btn-icon" data-close aria-label="关闭">×</button>
+        </header>
+        <div class="modal-toolbar">
+          <button class="btn ghost" data-up>↑ 上级</button>
+          <input class="modal-input" data-path placeholder="输入路径后回车…" />
+          <button class="btn ghost" data-go>前往</button>
+        </div>
+        <ul class="dir-list" data-list></ul>
+        <footer class="modal-foot">
+          <button class="btn ghost" data-close>取消</button>
+          <button class="btn primary" data-choose>使用该目录</button>
+        </footer>
+      </div>
+    </div>
+  </template>
+
+  <template id="tpl-presets-drawer">
+    <div class="drawer" data-drawer="presets">
+      <div class="drawer-backdrop" data-close></div>
+      <aside class="drawer-panel">
+        <header class="drawer-head">
+          <div>
+            <div class="drawer-eyebrow">预设库</div>
+            <h2 class="drawer-title">复用平台凭据和自定义 Provider</h2>
+          </div>
+          <button class="btn-icon" data-close aria-label="关闭">×</button>
+        </header>
+        <div class="drawer-body" data-body></div>
+      </aside>
+    </div>
+  </template>
+
+  <template id="tpl-confirm">
+    <div class="modal" data-modal="confirm">
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-panel modal-confirm">
+        <header class="modal-head">
+          <div>
+            <div class="modal-eyebrow" data-eyebrow>确认</div>
+            <div class="modal-title" data-title></div>
+          </div>
+        </header>
+        <p class="modal-body" data-message></p>
+        <footer class="modal-foot">
+          <button class="btn ghost" data-cancel>取消</button>
+          <button class="btn danger" data-confirm>确认</button>
+        </footer>
+      </div>
+    </div>
+  </template>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
